@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<title>Sandip PMJ Copy Filter Tool</title>
+<script>
+(function loadSpreadsheetLibrary(){
+  var primary=document.createElement('script');
+  primary.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+  primary.onerror=function(){
+    var fallback=document.createElement('script');
+    fallback.src='https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js';
+    fallback.onerror=function(){
+      window.__xlsxLoadFailed=true;
+      var status=document.getElementById('status');
+      if(status) { status.textContent='Spreadsheet library could not load. Check your internet connection, then reload this page.'; status.className='status note-negative'; }
+    };
+    document.head.appendChild(fallback);
+  };
+  document.head.appendChild(primary);
+})();
+</script>
+<style>
+:root{
+ --ink:#17233d;--muted:#5f6f89;--line:rgba(255,255,255,.62);
+ --accent:#4268e8;--accent-rgb:66,104,232;--green:#147d4a;
+ --glass:rgba(255,255,255,.63);--glass-strong:rgba(255,255,255,.78);
+ --bg1:#e5edff;--bg2:#ffe8ed;--bg3:#e8f7ff;
+}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 10% 5%,var(--bg2),transparent 42%),radial-gradient(ellipse at 90% 12%,var(--bg3),transparent 40%),linear-gradient(135deg,var(--bg1),#f6f7ff 52%,#fcecf3);background-attachment:fixed;font-family:"DM Sans","Segoe UI",Roboto,Arial,sans-serif;color:var(--ink);letter-spacing:-.01em}
+main{max-width:960px;margin:0 auto;padding:22px 14px 48px}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.avatar{width:54px;height:54px;border-radius:17px;object-fit:cover;display:grid;place-items:center;background:linear-gradient(135deg,rgba(var(--accent-rgb),.22),rgba(255,255,255,.7));border:1px solid rgba(255,255,255,.8);box-shadow:0 8px 22px rgba(44,65,120,.12);flex-shrink:0;font-size:25px;overflow:hidden}
+.brand h1{font-family:"Manrope","DM Sans",sans-serif;font-size:clamp(20px,4vw,29px);font-weight:800;line-height:1.16;margin:0;letter-spacing:-1px;background:linear-gradient(110deg,#17233d 10%,var(--accent) 90%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.brand small{display:block;color:var(--muted);font-size:12px;margin-top:4px;letter-spacing:.4px}
+.settings-btn{border:1px solid rgba(255,255,255,.8);background:rgba(255,255,255,.55);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-radius:13px;padding:10px 13px;font:inherit;font-weight:650;color:var(--ink);cursor:pointer;box-shadow:0 7px 20px rgba(40,60,110,.08);white-space:nowrap}
+.hero,.results,.settings-panel{background:linear-gradient(145deg,rgba(255,255,255,.82),rgba(255,255,255,.48));border:1px solid rgba(255,255,255,.88);border-radius:24px;padding:20px;box-shadow:0 22px 52px rgba(42,57,105,.15),0 5px 14px rgba(65,89,160,.07),inset 0 1px 0 #fff;backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px)}
+.sub{color:#52617c;line-height:1.65;margin:0 0 16px;font-size:clamp(14px,2.2vw,16px);font-weight:500}.hero>.sub{max-width:760px}.hero>.sub b{color:#293d78;font-weight:800;text-shadow:0 1px 0 rgba(255,255,255,.9)}
+.upload{display:block;border:1.5px dashed rgba(var(--accent-rgb),.48);background:linear-gradient(145deg,rgba(255,255,255,.76),rgba(235,241,255,.48));border-radius:18px;padding:20px 14px;text-align:center;cursor:pointer;transition:.2s;box-shadow:inset 0 1px 0 #fff,0 8px 20px rgba(55,78,145,.06)}
+.upload:hover{background:rgba(255,255,255,.72);transform:translateY(-1px)}
+.upload strong{display:block;margin-bottom:5px;font-size:16px}.upload input{display:block;margin:12px auto 0;max-width:100%}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin:15px 0}
+.pill{background:linear-gradient(135deg,rgba(255,255,255,.82),rgba(var(--accent-rgb),.11));color:var(--accent);border:1px solid rgba(var(--accent-rgb),.19);padding:7px 11px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.015em;box-shadow:0 4px 11px rgba(49,67,116,.07),inset 0 1px 0 #fff;text-transform:uppercase}
+.status{color:var(--muted);font-size:13px;margin:10px 0}
+.results{margin-top:18px;padding:0;overflow:hidden}
+.resulthead{padding:17px 18px;display:flex;justify-content:space-between;gap:12px;align-items:center;border-bottom:1px solid rgba(255,255,255,.75);flex-wrap:wrap;background:rgba(255,255,255,.24)}
+.resulthead h2{font-family:"Manrope","DM Sans",sans-serif;font-size:18px;font-weight:800;letter-spacing:-.45px;margin:0}.count-total,.count-done,.count-pending{display:inline-flex;align-items:center;margin:4px 5px 0 0;padding:4px 8px;border-radius:8px;font-size:11px;font-weight:800;box-shadow:inset 0 1px 0 rgba(255,255,255,.85)}.count-total{color:#4356a6;background:#e9edff}.count-done{color:#14784d;background:#e0f7eb}.count-pending{color:#a45b13;background:#fff0dc}
+.search{padding:11px 13px;border:1px solid rgba(150,165,200,.35);background:rgba(255,255,255,.6);backdrop-filter:blur(12px);border-radius:12px;font:inherit;width:min(100%,260px);outline:none}
+.search:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.12)}
+.list{padding:0 17px}.item{display:flex;align-items:center;gap:12px;padding:13px 2px;border-bottom:1px solid rgba(140,155,185,.18)}.item:last-child{border-bottom:0}
+.num{font-variant-numeric:tabular-nums;overflow-wrap:anywhere;flex:1;font-weight:650}
+.copy{border:0;background:linear-gradient(135deg,var(--accent),rgba(var(--accent-rgb),.82));color:#fff;padding:10px 14px;border-radius:11px;font-weight:700;cursor:pointer;min-width:104px;box-shadow:0 6px 15px rgba(var(--accent-rgb),.2);transition:transform .15s,filter .15s}
+.copy:hover:not(:disabled){transform:translateY(-2px);filter:brightness(1.06);box-shadow:0 9px 20px rgba(var(--accent-rgb),.28)}
+.copy:disabled{background:rgba(20,125,74,.12);color:var(--green);box-shadow:none;cursor:not-allowed}
+.empty{padding:24px;text-align:center;color:var(--muted)}
+.foot{font-size:11px;color:#6e7890;line-height:1.6;margin:12px 5px;padding:10px 12px;border-left:3px solid #9aa9d8;background:rgba(255,255,255,.28);border-radius:0 10px 10px 0}.status.note-positive{color:#13784d;background:rgba(25,160,102,.09);border:1px solid rgba(25,160,102,.17);border-radius:10px;padding:8px 10px}.status.note-negative{color:#b43c4b;background:rgba(224,69,89,.08);border:1px solid rgba(224,69,89,.16);border-radius:10px;padding:8px 10px}.status.note-neutral{color:#5f6f89}
+.settings-panel{margin-bottom:14px;padding:18px}.settings-panel h2{font-size:17px;margin:0 0 14px}
+.setting-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:13px}
+.setting-field{display:flex;flex-direction:column;gap:7px;color:var(--muted);font-size:13px;font-weight:600}
+.setting-field input[type=color]{width:100%;height:40px;padding:3px;border:1px solid rgba(140,155,185,.3);border-radius:10px;background:rgba(255,255,255,.6)}
+.setting-field input[type=file]{font-size:12px;max-width:100%}
+.setting-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.secondary-btn{border:1px solid rgba(140,155,185,.3);background:rgba(255,255,255,.6);padding:9px 12px;border-radius:10px;font:inherit;font-size:13px;font-weight:650;cursor:pointer;color:var(--ink)}
+.hidden{display:none!important}
+@media(max-width:520px){main{padding:12px 10px 26px}.hero{padding:15px}.topbar{align-items:flex-start}.avatar{width:46px;height:46px;border-radius:14px}.settings-btn{padding:9px 10px;font-size:13px}.resulthead{padding:15px}.list{padding:0 13px}.copy{min-width:90px;padding:9px 10px}}
+</style></head>
+<body><main>
+<header class="topbar">
+ <div class="brand">
+  <div class="avatar" id="avatarPreview" aria-label="Profile photo">✦</div>
+  <div><h1 id="brandTitle">Sandip PMJ Copy Filter Tool</h1><small>SMART FORM FILTER · COPY WORKSPACE</small></div>
+ </div>
+ <button class="settings-btn" id="settingsToggle" type="button" aria-expanded="false">⚙ Settings</button>
+</header>
+<section id="settingsPanel" class="settings-panel hidden">
+ <h2>🎨 Customize Your Workspace</h2>
+ <div class="setting-grid">
+  <label class="setting-field">Tool Name<input id="titleSetting" type="text" value="Sandip PMJ Copy Filter Tool" maxlength="60"></label>
+  <label class="setting-field">Accent Color<input id="accentSetting" type="color" value="#4268e8"></label>
+  <label class="setting-field">Background 1 · Blue<input id="bg1Setting" type="color" value="#e5edff"></label>
+  <label class="setting-field">Background 2 · Rose<input id="bg2Setting" type="color" value="#ffe8ed"></label>
+  <label class="setting-field">Background 3 · Sky<input id="bg3Setting" type="color" value="#e8f7ff"></label>
+  <label class="setting-field">Profile Photo<input id="photoSetting" type="file" accept="image/*"></label>
+ </div>
+ <div class="setting-actions"><button class="secondary-btn" id="saveSettings" type="button">✓ Save Settings</button><button class="secondary-btn" id="resetSettings" type="button">Reset</button></div>
+ <p class="status">Your photo and theme are stored in this browser. The default profile photo is included with this website.</p>
+</section>
+<section class="hero">
+<p class="sub">Choose an Excel or CSV file. The tool automatically filters records where <b>Verification Status is blank</b> and <b>Digitization Done = Yes</b>. Each Form Number is locked after it has been copied once.</p>
+<label class="upload"><strong>📂 Choose Excel / CSV File</strong><span class="sub">Supports .xlsx, .xls and .csv files</span><input id="file" type="file" accept=".xlsx,.xls,.csv"></label>
+<div class="filters"><span class="pill">Verification Status: Blank</span><span class="pill">Digitization Done: Yes</span><span class="pill">COPY ONCE · LOCKED</span></div>
+<div id="status" class="status" aria-live="polite">No file selected yet.</div>
+</section>
+<section id="results" class="results hidden"><div class="resulthead"><div><h2>Matched Form Numbers</h2><div id="count" class="status"></div></div><input id="search" class="search" placeholder="Search Form Numbers…" aria-label="Search Form Numbers"></div><div id="list" class="list"></div></section>
+<p class="foot">Privacy: Your file is processed locally in your browser and is not uploaded to a server. Copied-number locks are saved in this browser and remain in place when you reopen the same file. An internet connection is required to load the spreadsheet library and web fonts.</p>
+</main>
+<script>
+(() => {
+ const root=document.documentElement;
+ const panel=document.getElementById('settingsPanel');
+ const toggle=document.getElementById('settingsToggle');
+ const titleInput=document.getElementById('titleSetting');
+ const accentInput=document.getElementById('accentSetting');
+ const bg1Input=document.getElementById('bg1Setting');
+ const bg2Input=document.getElementById('bg2Setting');
+ const bg3Input=document.getElementById('bg3Setting');
+ const photoInput=document.getElementById('photoSetting');
+ const avatar=document.getElementById('avatarPreview');
+ const brandTitle=document.getElementById('brandTitle');
+ const defaults={title:'Sandip PMJ Copy Filter Tool',accent:'#4268e8',bg1:'#e5edff',bg2:'#ffe8ed',bg3:'#e8f7ff',photo:'assets/profile.jpg'};
+ function apply(s){
+  root.style.setProperty('--accent',s.accent||defaults.accent);
+  root.style.setProperty('--accent-rgb',(parseInt((s.accent||defaults.accent).slice(1,3),16))+','+(parseInt((s.accent||defaults.accent).slice(3,5),16))+','+(parseInt((s.accent||defaults.accent).slice(5,7),16)));
+  root.style.setProperty('--bg1',s.bg1||defaults.bg1);root.style.setProperty('--bg2',s.bg2||defaults.bg2);root.style.setProperty('--bg3',s.bg3||defaults.bg3);
+  brandTitle.textContent=s.title||defaults.title;document.title=brandTitle.textContent;
+  avatar.innerHTML=''; if(s.photo && typeof s.photo==='string'){const img=document.createElement('img');img.alt='Sandip profile photo';img.style.cssText='width:100%;height:100%;object-fit:cover';img.onerror=()=>{avatar.innerHTML='✦'};img.src=s.photo;avatar.appendChild(img)}else avatar.textContent='✦';
+  titleInput.value=s.title||defaults.title;accentInput.value=s.accent||defaults.accent;bg1Input.value=s.bg1||defaults.bg1;bg2Input.value=s.bg2||defaults.bg2;bg3Input.value=s.bg3||defaults.bg3;
+ }
+ function read(){try{return {...defaults,...JSON.parse(localStorage.getItem('sandipPMJTheme')||'{}')}}catch{return {...defaults}}}
+ let chosenPhoto='';
+ toggle.addEventListener('click',()=>{const open=panel.classList.toggle('hidden')===false;toggle.setAttribute('aria-expanded',String(open))});
+ [titleInput,accentInput,bg1Input,bg2Input,bg3Input].forEach(el=>el.addEventListener('input',()=>apply({...read(),title:titleInput.value.trim()||defaults.title,accent:accentInput.value,bg1:bg1Input.value,bg2:bg2Input.value,bg3:bg3Input.value,photo:chosenPhoto||read().photo})));
+ photoInput.addEventListener('change',()=>{const file=photoInput.files&&photoInput.files[0];if(!file)return;if(!file.type.startsWith('image/')){alert('Please select a valid image file.');photoInput.value='';return}const reader=new FileReader();reader.onerror=()=>{alert('The image could not be read. Please choose another photo.');photoInput.value=''};reader.onload=()=>{const source=new Image();source.onerror=()=>{alert('This image format could not be opened. Try a JPG or PNG image.');photoInput.value=''};source.onload=()=>{try{const maxSide=420,scale=Math.min(1,maxSide/Math.max(source.width,source.height));const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(source.width*scale));canvas.height=Math.max(1,Math.round(source.height*scale));const ctx=canvas.getContext('2d');ctx.drawImage(source,0,0,canvas.width,canvas.height);chosenPhoto=canvas.toDataURL('image/jpeg',0.78);apply({...read(),title:titleInput.value.trim()||defaults.title,accent:accentInput.value,bg1:bg1Input.value,bg2:bg2Input.value,bg3:bg3Input.value,photo:chosenPhoto})}catch{alert('Could not process this photo. Try a smaller JPG or PNG image.')}};source.src=String(reader.result)};reader.readAsDataURL(file)});
+ document.getElementById('saveSettings').addEventListener('click',()=>{const s={title:titleInput.value.trim()||defaults.title,accent:accentInput.value,bg1:bg1Input.value,bg2:bg2Input.value,bg3:bg3Input.value,photo:chosenPhoto||read().photo};try{localStorage.setItem('sandipPMJTheme',JSON.stringify(s));apply(s);alert('Your theme settings have been saved.')}catch{alert('Settings could not be saved. Try a smaller photo.')}});
+ document.getElementById('resetSettings').addEventListener('click',()=>{try{localStorage.removeItem('sandipPMJTheme')}catch{}chosenPhoto='';photoInput.value='';apply(defaults)});
+ apply(read());
+})();
+</script>
+<script>
+const fileInput=document.getElementById('file'), statusEl=document.getElementById('status'), results=document.getElementById('results'), list=document.getElementById('list'), countEl=document.getElementById('count'), searchEl=document.getElementById('search');
+let records=[], currentKey='';
+const norm=s=>String(s??'').toLowerCase().replace(/[\s_\-./()]+/g,'').replace(/[^a-z0-9]/g,'');
+function findCol(headers, candidates){return headers.findIndex(h=>candidates.includes(norm(h)))}
+function isBlank(v){return v===null||v===undefined||String(v).trim()===''}
+function isYes(v){return ['yes','y','true','1'].includes(String(v??'').trim().toLowerCase())}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function copiedSet(){try{return new Set(JSON.parse(localStorage.getItem(currentKey)||'[]'))}catch{return new Set()}}
+function saveCopied(s){try{localStorage.setItem(currentKey,JSON.stringify([...s]))}catch{}}
+fileInput.addEventListener('change',async e=>{
+ const f=e.target.files?.[0]; if(!f)return;
+ statusEl.textContent='Reading file…'; results.classList.add('hidden'); list.innerHTML=''; records=[];
+ try{
+  if(!window.XLSX)throw new Error('Spreadsheet library could not load. Check your internet connection and reload this page.');
+  const buf=await f.arrayBuffer(); const wb=XLSX.read(buf,{type:'array',cellDates:false});
+  let all=[]; let usedHeaders=null;
+  for(const sn of wb.SheetNames){const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:null,raw:false}); if(!rows.length)continue;
+   // Find the row containing the relevant column names, including exports with title rows above headers.
+   let headerAt=-1, ix={};
+   for(let ri=0;ri<Math.min(rows.length,20);ri++){
+    const h=rows[ri].map(x=>String(x??'').trim());
+    const form=findCol(h,['formnumber','formno','formnum','formid']);
+    const ver=findCol(h,['verificationstatus','verification']);
+    const dig=findCol(h,['digitizationdone','digitisationdone','digitizationstatus','digitisationstatus']);
+    if(form>=0&&ver>=0&&dig>=0){headerAt=ri;ix={form,ver,dig};usedHeaders=h;break;}
+   }
+   if(headerAt<0)continue;
+   for(let ri=headerAt+1;ri<rows.length;ri++){const r=rows[ri];const form=r[ix.form];if(!isBlank(r[ix.ver])||!isYes(r[ix.dig])||isBlank(form))continue;all.push(String(form).trim())}
+  }
+  records=[...new Set(all)]; currentKey='formCopyLocked:v1:'+f.name+':'+f.size+':'+f.lastModified;
+  statusEl.textContent=`File: ${f.name} | matched ${records.length} Form Numbers found.`;
+  results.classList.remove('hidden'); render();
+  if(!records.length)list.innerHTML='<div class="empty">No matching records found. Check that the columns Form Number, Verification Status and Digitization Done are present.</div>';
+ }catch(err){statusEl.textContent='Could not read file: '+err.message;}
+});
+function render(){
+ const q=searchEl.value.trim().toLowerCase(), done=copiedSet();
+ const copiedCount=records.filter(n=>done.has(n)).length;
+ const pending=records.filter(n=>!done.has(n));
+ const filtered=pending.filter(n=>n.toLowerCase().includes(q));
+ countEl.innerHTML=`<span class="count-total">Total ${records.length}</span><span class="count-done">✓ Completed ${copiedCount}</span><span class="count-pending">Remaining ${pending.length}</span>`;
+ list.innerHTML='';
+ if(!filtered.length){
+  list.innerHTML=`<div class="empty">${pending.length===0?'🎉 All matching forms are completed. Your completed count is saved above.':'No remaining Form Numbers match your search.'}</div>`;
+  return;
+ }
+ const frag=document.createDocumentFragment();
+ for(const n of filtered){
+  const row=document.createElement('div');row.className='item';
+  const num=document.createElement('div');num.className='num';num.textContent=n;
+  const b=document.createElement('button');b.className='copy';b.textContent='Copy';
+  b.addEventListener('click',async()=>{
+   if(copiedSet().has(n))return;
+   try{await navigator.clipboard.writeText(n)}
+   catch{const ta=document.createElement('textarea');ta.value=n;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();const ok=document.execCommand('copy');ta.remove();if(!ok){alert('Copy failed. Please allow clipboard access in your browser.');return}}
+   const s=copiedSet();s.add(n);saveCopied(s);render();
+  });
+  row.append(num,b);frag.append(row);
+ }
+ list.append(frag);
+}
+searchEl.addEventListener('input',render);
+</script></body></html>
